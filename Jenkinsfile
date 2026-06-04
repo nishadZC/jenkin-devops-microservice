@@ -101,27 +101,46 @@ pipeline {
 	stages{
 		stage('Checkout') {
 			steps {
-				echo "Build"
 				sh "docker version"
 				sh "mvn --version"
 			}
 		}
 		stage('Compile') {
 			steps {
-				echo "Compile"
 				sh "mvn clean compile"
 			}
 		}
 		stage('Test') {
 			steps {
-				echo "Test"
 				sh "mvn test"
 			}
 		}
 		stage('Integration Test') {
 			steps {
-				echo "Integration Test"
-				sh "mvn failsafe:integration-test"
+				sh "mvn failsafe:integration-test failsafe:verify"
+			}
+		}
+		stage('Package') {
+			steps {
+				sh "mvn package -DskipTests"
+			}
+		}
+		stage('Build docker image') {
+			steps {
+				// sh "docker build -t in28min/currency-exchange-devops:${env.BUILD_TAG}"
+				script {
+					dockerImage = docker.build("in28min/currency-exchange-devops:${env.BUILD_TAG}")
+				}
+			}
+		}
+		stage('Push docker image') {
+			steps {
+				script {
+					docker.withRegistry('', 'dockerhub-creds') {
+						dockerImage.push()
+						dockerImage.push('latest')
+					}
+				}
 			}
 		}
 	}
